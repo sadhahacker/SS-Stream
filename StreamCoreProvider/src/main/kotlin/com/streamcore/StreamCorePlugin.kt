@@ -7,15 +7,11 @@ import com.lagradost.cloudstream3.plugins.Plugin
 @CloudstreamPlugin
 class StreamCorePlugin : Plugin() {
     override fun load(context: Context) {
-        // Set in-app settings handler
-        openSettings = { ctx ->
-            StreamSettingsManager.showSettingsDialog(ctx)
-        }
-
-        // Initialize preferences
         StreamSettingsManager.init(context)
 
-        // Register the provider
+        // Adds a "Settings" button under Settings > Extensions > StreamCore
+        openSettings = { ctx -> StreamSettingsManager.showSettingsDialog(ctx) }
+
         registerMainAPI(StreamCoreProvider())
     }
 }
