@@ -20,7 +20,7 @@
 ### ⚡ Option 1: One-Click Install (Android / TV)
 If you are viewing this on an Android device with Cloudstream installed, click the badge below to automatically install the repository:
 
-[![Add to Cloudstream](https://img.shields.io/badge/Cloudstream-Add_Repository-00C853?style=for-the-badge&logo=android&logoColor=white)](cloudstreamrepo://raw.githubusercontent.com/sadhahacker/SS-Stream/builds/plugins.json)
+[![Add to Cloudstream](https://img.shields.io/badge/Cloudstream-Add_Repository-00C853?style=for-the-badge&logo=android&logoColor=white)](cloudstreamrepo://raw.githubusercontent.com/sadhahacker/SS-Stream/main/repo.json)
 
 ---
 
@@ -34,7 +34,7 @@ If you are viewing this on an Android device with Cloudstream installed, click t
 | Setting | Value |
 | :--- | :--- |
 | **Repository Name** | `SS-Stream` |
-| **Repository URL** | `https://raw.githubusercontent.com/sadhahacker/SS-Stream/builds/plugins.json` |
+| **Repository URL** | `https://raw.githubusercontent.com/sadhahacker/SS-Stream/main/repo.json` |
 
 5. Tap **Download**.
 6. Scroll to **StreamCore** in the plugin list and tap **Install**.
