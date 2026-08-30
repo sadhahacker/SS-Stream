@@ -1,0 +1,10 @@
+{
+    "name": "SS-Stream",
+    "id": "sadhahacker.ssstream",
+    "packageName": "sadhahacker.ssstream",
+    "description": "StreamCore extension repository for Cloudstream",
+    "manifestVersion": 1,
+    "pluginLists": [
+        "https://raw.githubusercontent.com/sadhahacker/SS-Stream/builds/plugins.json"
+    ]
+}

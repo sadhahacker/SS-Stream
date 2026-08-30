@@ -1,0 +1,33 @@
+[
+    {
+        "iconUrl": "https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ded904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.png",
+        "fileHash": "sha256-b69eec6af4691995b46a60c4a4cf8e61b164c0fbec23ef17c279eb44461d1acd",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/sadhahacker/SS-Stream",
+        "fileSize": 42630,
+        "status": 1,
+        "language": "en",
+        "authors": [
+            "sadhasivam"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 3,
+        "internalName": "StreamCoreProvider",
+        "description": "TMDB Media Provider",
+        "url": "https://raw.githubusercontent.com/sadhahacker/SS-Stream/builds/StreamCoreProvider.cs3",
+        "name": "StreamCoreProvider",
+        "packageName": "com.streamcore.StreamCoreProvider",
+        "id": "com.streamcore.StreamCoreProvider",
+        "languages": [
+            "en"
+        ],
+        "categories": [
+            "Movie",
+            "TvSeries"
+        ],
+        "baseUrl": "https://api.themoviedb.org"
+    }
+]
