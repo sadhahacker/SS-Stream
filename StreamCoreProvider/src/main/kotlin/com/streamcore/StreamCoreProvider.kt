@@ -14,7 +14,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 
 class StreamCoreProvider : MainAPI() {
-    // Dynamic provider-level configuration from ProviderConfig
     override var name = ProviderConfig.NAME
     override var mainUrl = ProviderConfig.MAIN_URL
     override val supportedTypes = ProviderConfig.SUPPORTED_TYPES
@@ -94,12 +93,12 @@ class StreamCoreProvider : MainAPI() {
             val movie = app.get(detailsUrl).parsedSafe<TmdbMovieDetails>() ?: return null
 
             val payload = MediaPayload(id = tmdbId, type = "movie")
-            newMovieLoadResponse(movie.title, url, TvType.Movie, toJson(payload)) {
+            newMovieLoadResponse(movie.title, url, TvType.Movie, payload.toJson()) {
                 this.posterUrl = movie.posterPath?.let { "$IMAGE_BASE$it" }
                 this.plot = movie.overview
                 this.year = movie.releaseDate?.take(4)?.toIntOrNull()
-                movie.runtime?.let { addDuration(it) }
-                movie.voteAverage?.let { addRating(it.toFloat()) }
+                movie.runtime?.let { addDuration(it.toString()) }
+                movie.voteAverage?.let { addRating(it.toString()) }
                 movie.videos?.results?.firstOrNull { it.site == "YouTube" && it.type == "Trailer" }?.key?.let {
                     addTrailer("https://www.youtube.com/watch?v=$it")
                 }
@@ -119,7 +118,7 @@ class StreamCoreProvider : MainAPI() {
                     val epNumber = ep.episodeNumber ?: 1
                     val payload = MediaPayload(id = tmdbId, type = "tv", season = s, episode = epNumber)
                     episodes.add(
-                        newEpisode(toJson(payload)) {
+                        newEpisode(payload.toJson()) {
                             this.name = ep.name
                             this.season = s
                             this.episode = epNumber
@@ -134,16 +133,11 @@ class StreamCoreProvider : MainAPI() {
                 this.posterUrl = show.posterPath?.let { "$IMAGE_BASE$it" }
                 this.plot = show.overview
                 this.year = show.firstAirDate?.take(4)?.toIntOrNull()
-                show.voteAverage?.let { addRating(it.toFloat()) }
+                show.voteAverage?.let { addRating(it.toString()) }
             }
         }
     }
 
-    /**
-     * Runtime Priority-Ranked Multi-Source Loader.
-     * Sources are fetched using [StreamSettingsManager.getRuntimeSortedSources()].
-     * Whatever server the user set as Primary in Cloudstream Settings is queried first!
-     */
     override suspend fun loadLinks(
         data: String,
         isCdn: Boolean,
@@ -153,10 +147,8 @@ class StreamCoreProvider : MainAPI() {
         val payload = parseJson<MediaPayload>(data)
         val tmdbId = payload.id
 
-        // 1. Get sources ordered by the user's IN-APP Cloudstream Settings!
         val sortedSources = StreamSettingsManager.getRuntimeSortedSources()
 
-        // 2. Concurrently resolve links while honoring in-app priority
         coroutineScope {
             sortedSources.map { source ->
                 async {
@@ -168,9 +160,7 @@ class StreamCoreProvider : MainAPI() {
                         } ?: return@runCatching
 
                         loadExtractor(streamUrl, source.referer, subtitleCallback) { link ->
-                            callback.invoke(
-                                link.copy(name = "[${source.name}] ${link.name}")
-                            )
+                            callback.invoke(link)
                         }
                     }
                 }
