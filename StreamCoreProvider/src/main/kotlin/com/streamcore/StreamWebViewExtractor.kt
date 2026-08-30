@@ -34,9 +34,9 @@ abstract class WebViewEmbedExtractor : ExtractorApi() {
     override val requiresReferer = false
 
     /** Matched against every outgoing request until the real stream manifest is found. */
-    open val streamUrlRegex = Regex("""\.m3u8(\?|$)""")
+    open val streamUrlRegex = Regex("""(\.m3u8|\.mp4|\.mpd)($|\?|/)""", RegexOption.IGNORE_CASE)
 
-    open val timeoutMs = 45_000L
+    open val timeoutMs = 10_000L
 
     /**
      * Most of these players wait for a click on their poster/play button before requesting
@@ -88,6 +88,17 @@ abstract class WebViewEmbedExtractor : ExtractorApi() {
                     settings.userAgentString = USER_AGENT
 
                     webViewClient = object : WebViewClient() {
+                        override fun shouldOverrideUrlLoading(
+                            view: WebView,
+                            request: WebResourceRequest
+                        ): Boolean {
+                            val targetHost = request.url.host ?: return true
+                            val originalHost = runCatching { java.net.URI(url).host ?: "" }.getOrDefault("")
+                            // Prevent popups and ad redirects to external untrusted domains
+                            val isSameSite = targetHost.contains(originalHost) || originalHost.contains(targetHost)
+                            return !isSameSite
+                        }
+
                         override fun shouldInterceptRequest(
                             view: WebView,
                             request: WebResourceRequest

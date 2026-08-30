@@ -12,6 +12,7 @@ import com.lagradost.cloudstream3.utils.loadExtractor
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * TMDB-backed catalog that fans a single title out across every source registered
@@ -133,18 +134,37 @@ class StreamCoreProvider : MainAPI() {
         val sources = StreamSettingsManager.getRuntimeSortedSources()
 
         coroutineScope {
+            launch {
+                runCatching {
+                    val subUrl = if (payload.type == "tv") {
+                        "https://api.shows.st/subtitles/tv/${payload.id}/${payload.season ?: 1}/${payload.episode ?: 1}"
+                    } else {
+                        "https://api.shows.st/subtitles/movie/${payload.id}"
+                    }
+                    val subs = app.get(subUrl, timeout = 6L).parsedSafe<List<SubtitleItem>>() ?: emptyList()
+                    subs.forEach { sub ->
+                        val file = sub.file
+                        val label = sub.label
+                        if (!file.isNullOrBlank() && !label.isNullOrBlank()) {
+                            subtitleCallback(
+                                SubtitleFile(
+                                    lang = label,
+                                    url = file
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
             sources.map { source ->
                 async {
                     runCatching {
-                        val streamUrl = if (payload.type == "tv") {
-                            source.getTvUrl(payload.id, payload.season ?: 1, payload.episode ?: 1)
-                        } else {
-                            source.getMovieUrl(payload.id)
-                        } ?: return@runCatching
-
-                        loadExtractor(
-                            url = streamUrl,
-                            referer = source.referer,
+                        source.loadStreams(
+                            tmdbId = payload.id,
+                            type = payload.type,
+                            season = payload.season,
+                            episode = payload.episode,
                             subtitleCallback = subtitleCallback,
                             callback = callback
                         )
