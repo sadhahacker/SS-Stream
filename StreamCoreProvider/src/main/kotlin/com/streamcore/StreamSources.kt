@@ -1,7 +1,6 @@
 package com.streamcore
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.lagradost.cloudstream3.Qualities
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorLink
@@ -129,14 +128,14 @@ data class PatternSource(
 }
 
 fun parseQuality(quality: String?): Int {
-    val q = quality?.lowercase()?.trim() ?: return Qualities.Unknown.value
+    val q = quality?.lowercase()?.trim() ?: return 0
     return when {
-        q.contains("2160") || q.contains("4k") -> Qualities.P2160.value
-        q.contains("1080") -> Qualities.P1080.value
-        q.contains("720") -> Qualities.P720.value
-        q.contains("480") -> Qualities.P480.value
-        q.contains("360") -> Qualities.P360.value
-        else -> Qualities.Unknown.value
+        q.contains("2160") || q.contains("4k") -> 2160
+        q.contains("1080") -> 1080
+        q.contains("720") -> 720
+        q.contains("480") -> 480
+        q.contains("360") -> 360
+        else -> 0
     }
 }
 
