@@ -1,0 +1,22 @@
+[
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=vidcore.org&sz=%size%",
+        "fileHash": "sha256-6d53e79238ade11712f43e2171109e77b9f580f47c5101e0a909c24b102f6747",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/sadhahacker/SS-Stream",
+        "fileSize": 47619,
+        "status": 1,
+        "authors": [
+            "StreamCore"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 4,
+        "internalName": "StreamCoreProvider",
+        "description": "Universal multi-server streaming engine combining VidCore, VidLink, Videasy and more, with in-app priority switching and automatic failover",
+        "url": "https://raw.githubusercontent.com/sadhahacker/SS-Stream/builds/StreamCoreProvider.cs3",
+        "name": "StreamCoreProvider"
+    }
+]
