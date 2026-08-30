@@ -1,0 +1,9 @@
+- generic [active]:
+  - generic [ref=e1] [cursor=pointer]:
+    - img "Inception" [ref=e2]
+    - generic [ref=e4]:
+      - button [ref=e5]
+      - generic [ref=e8]:
+        - paragraph [ref=e9]: Inception
+        - paragraph [ref=e10]: "2010"
+  - alert [ref=e11]

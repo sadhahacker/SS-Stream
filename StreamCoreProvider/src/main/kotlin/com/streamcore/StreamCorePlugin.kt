@@ -13,5 +13,17 @@ class StreamCorePlugin : Plugin() {
         openSettings = { ctx -> StreamSettingsManager.showSettingsDialog(ctx) }
 
         registerMainAPI(StreamCoreProvider())
+
+        // None of these sources are recognized by Cloudstream's built-in extractors,
+        // and several protect their stream APIs with encryption/signing (see
+        // StreamExtractors.kt) - so we ship our own, WebView-based ones.
+        registerExtractorAPI(VidCoreExtractor())
+        registerExtractorAPI(VidLinkExtractor())
+        registerExtractorAPI(VideasyExtractor())
+        registerExtractorAPI(EmbedMasterExtractor())
+        registerExtractorAPI(AutoEmbedExtractor())
+        registerExtractorAPI(TwoEmbedExtractor())
+        registerExtractorAPI(LordFlixExtractor())
+        registerExtractorAPI(VidLoveExtractor())
     }
 }
