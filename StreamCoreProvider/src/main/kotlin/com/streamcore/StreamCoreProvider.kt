@@ -159,9 +159,12 @@ class StreamCoreProvider : MainAPI() {
                             source.getMovieUrl(tmdbId)
                         } ?: return@runCatching
 
-                        loadExtractor(streamUrl, source.referer, subtitleCallback) { link ->
-                            callback.invoke(link)
-                        }
+                        loadExtractor(
+                            url = streamUrl,
+                            referer = source.referer,
+                            subtitleCallback = subtitleCallback,
+                            callback = callback
+                        )
                     }
                 }
             }.awaitAll()
