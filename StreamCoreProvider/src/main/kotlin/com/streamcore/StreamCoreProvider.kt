@@ -3,7 +3,7 @@ package com.streamcore
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addDuration
-import com.lagradost.cloudstream3.LoadResponse.Companion.addRating
+import com.lagradost.cloudstream3.LoadResponse.Companion.addScore
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
@@ -98,7 +98,7 @@ class StreamCoreProvider : MainAPI() {
                 this.plot = movie.overview
                 this.year = movie.releaseDate?.take(4)?.toIntOrNull()
                 movie.runtime?.let { addDuration(it.toString()) }
-                movie.voteAverage?.let { addRating(it.toString()) }
+                movie.voteAverage?.let { addScore(it.toString()) }
                 movie.videos?.results?.firstOrNull { it.site == "YouTube" && it.type == "Trailer" }?.key?.let {
                     addTrailer("https://www.youtube.com/watch?v=$it")
                 }
@@ -133,7 +133,7 @@ class StreamCoreProvider : MainAPI() {
                 this.posterUrl = show.posterPath?.let { "$IMAGE_BASE$it" }
                 this.plot = show.overview
                 this.year = show.firstAirDate?.take(4)?.toIntOrNull()
-                show.voteAverage?.let { addRating(it.toString()) }
+                show.voteAverage?.let { addScore(it.toString()) }
             }
         }
     }
