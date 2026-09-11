@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
-import com.lagradost.cloudstream3.utils.newExtractorLink
 
 object VidCoreExtractor {
     private const val API_URL = "https://vidrack.created.app/api/sources/vidrift"
@@ -35,16 +34,15 @@ object VidCoreExtractor {
             val referer = headers["Referer"] ?: "https://embed.vidrift.in/"
 
             callback(
-                newExtractorLink(
+                ExtractorLink(
                     source = "VidCore",
                     name = "[VidCore] 1080p",
                     url = streamUrl,
-                    type = ExtractorLinkType.M3U8
-                ) {
-                    this.referer = referer
-                    this.headers = headers
-                    this.quality = qualityInt
-                }
+                    referer = referer,
+                    quality = qualityInt,
+                    type = ExtractorLinkType.M3U8,
+                    headers = headers
+                )
             )
         }
     }

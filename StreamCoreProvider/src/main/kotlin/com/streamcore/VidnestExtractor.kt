@@ -5,7 +5,6 @@ import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
-import com.lagradost.cloudstream3.utils.newExtractorLink
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -110,16 +109,17 @@ object VidnestExtractor {
             val link = stream.url ?: return@forEach
             val lang = stream.language ?: "Auto"
             val headers = stream.headers ?: emptyMap()
+            val referer = headers["Referer"] ?: "https://slast430did.com"
             callback(
-                newExtractorLink(
+                ExtractorLink(
                     source = "AllMovies",
                     name = "[AllMovies] $lang",
                     url = link,
-                    type = ExtractorLinkType.M3U8
-                ) {
-                    this.referer = headers["Referer"] ?: "https://slast430did.com"
-                    this.headers = headers
-                }
+                    referer = referer,
+                    quality = 1080,
+                    type = ExtractorLinkType.M3U8,
+                    headers = headers
+                )
             )
         }
     }
@@ -130,16 +130,17 @@ object VidnestExtractor {
             val link = stream.url ?: return@forEach
             val lang = stream.language ?: "Auto"
             val headers = stream.headers ?: emptyMap()
+            val referer = headers["Referer"] ?: "https://goodstream.cc"
             callback(
-                newExtractorLink(
+                ExtractorLink(
                     source = "HollyMovieHD",
                     name = "[HollyMovieHD] $lang",
                     url = link,
-                    type = ExtractorLinkType.M3U8
-                ) {
-                    this.referer = headers["Referer"] ?: "https://goodstream.cc"
-                    this.headers = headers
-                }
+                    referer = referer,
+                    quality = 1080,
+                    type = ExtractorLinkType.M3U8,
+                    headers = headers
+                )
             )
         }
     }
@@ -149,10 +150,12 @@ object VidnestExtractor {
         root.sources?.forEach { src ->
             val link = src.url ?: return@forEach
             callback(
-                newExtractorLink(
+                ExtractorLink(
                     source = "Klikxxi",
                     name = "[Klikxxi] ${src.quality ?: "Auto"}",
                     url = link,
+                    referer = "https://klikxxi.me/",
+                    quality = 1080,
                     type = ExtractorLinkType.M3U8
                 )
             )

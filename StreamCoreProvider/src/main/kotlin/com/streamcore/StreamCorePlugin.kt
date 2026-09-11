@@ -1,13 +1,11 @@
 package com.streamcore
 
-import android.content.Context
+import com.lagradost.cloudstream3.plugins.BasePlugin
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
-import com.lagradost.cloudstream3.plugins.Plugin
 
 @CloudstreamPlugin
-class StreamCorePlugin : Plugin() {
-    override fun load(context: Context) {
-        // Register the TMDB catalog provider
+class StreamCorePlugin : BasePlugin() {
+    override fun load() {
         registerMainAPI(StreamCoreProvider())
     }
 }
