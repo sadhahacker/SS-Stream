@@ -5,20 +5,16 @@ import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 
-object VidCoreExtractor {
+object VidCoreExtractor : StreamExtractor {
+    override val name = "VidCore"
+
     private const val API_URL = "https://vidrack.created.app/api/sources/vidrift"
 
-    suspend fun resolveStreams(
-        tmdbId: Int,
-        isMovie: Boolean,
-        season: Int? = null,
-        episode: Int? = null,
-        callback: (ExtractorLink) -> Unit
-    ) {
-        val url = if (isMovie) {
-            "$API_URL?id=$tmdbId"
+    override suspend fun resolveStreams(request: MediaRequest, callback: (ExtractorLink) -> Unit) {
+        val url = if (request.isMovie) {
+            "$API_URL?id=${request.tmdbId}"
         } else {
-            "$API_URL?id=$tmdbId&type=tv&season=${season ?: 1}&episode=${episode ?: 1}"
+            "$API_URL?id=${request.tmdbId}&type=tv&season=${request.season ?: 1}&episode=${request.episode ?: 1}"
         }
 
         val res = app.get(url, timeout = 10L).parsedSafe<VidCoreResponse>()
@@ -26,7 +22,7 @@ object VidCoreExtractor {
 
         sources.forEach { src ->
             val streamUrl = src.url ?: return@forEach
-            val qualityInt = parseQuality(src.quality)
+            val qualityInt = QualityUtils.parseQuality(src.quality)
             val headers = src.headers ?: mapOf(
                 "Referer" to "https://embed.vidrift.in/",
                 "Origin" to "https://embed.vidrift.in"
@@ -50,18 +46,6 @@ object VidCoreExtractor {
                     headers = headers
                 )
             )
-        }
-    }
-
-    private fun parseQuality(quality: String?): Int {
-        val q = quality?.lowercase()?.trim() ?: return 1080
-        return when {
-            q.contains("2160") || q.contains("4k") -> 2160
-            q.contains("1080") -> 1080
-            q.contains("720") -> 720
-            q.contains("480") -> 480
-            q.contains("360") -> 360
-            else -> 1080
         }
     }
 

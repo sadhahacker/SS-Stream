@@ -62,7 +62,9 @@ object VidnestDecryptor {
     }
 }
 
-object VidnestExtractor {
+object VidnestExtractor : StreamExtractor {
+    override val name = "Vidnest"
+
     private const val BASE_API = "https://new.vidnest.fun"
     private val API_HEADERS = mapOf(
         "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/150 Safari/537.36",
@@ -74,20 +76,14 @@ object VidnestExtractor {
     // Verified working servers from VidNest network (moviebox removed as it returns dummy loop)
     private val WORKING_SERVERS = listOf("allmovies", "hollymoviehd", "klikxxi")
 
-    suspend fun resolveStreams(
-        tmdbId: Int,
-        isMovie: Boolean,
-        season: Int? = null,
-        episode: Int? = null,
-        callback: (ExtractorLink) -> Unit
-    ) = coroutineScope {
+    override suspend fun resolveStreams(request: MediaRequest, callback: (ExtractorLink) -> Unit): Unit = coroutineScope {
         WORKING_SERVERS.map { server ->
             async {
                 runCatching {
-                    val url = if (isMovie) {
-                        "$BASE_API/$server/movie/$tmdbId"
+                    val url = if (request.isMovie) {
+                        "$BASE_API/$server/movie/${request.tmdbId}"
                     } else {
-                        "$BASE_API/$server/tv/$tmdbId/${season ?: 1}/${episode ?: 1}"
+                        "$BASE_API/$server/tv/${request.tmdbId}/${request.season ?: 1}/${request.episode ?: 1}"
                     }
 
                     val res = app.get(url, headers = API_HEADERS, timeout = 10L).parsedSafe<VidnestEncryptedResponse>()
@@ -98,7 +94,7 @@ object VidnestExtractor {
                         "hollymoviehd" -> parseHollyMovieHd(rawDecrypted, callback)
                         "klikxxi" -> parseKlikxxi(rawDecrypted, callback)
                     }
-                }
+                }.onFailure { logFailure("Vidnest[$server]", it) }
             }
         }.awaitAll()
     }
@@ -149,7 +145,7 @@ object VidnestExtractor {
         val root = runCatching { parseJson<KlikxxiPayload>(json) }.getOrNull() ?: return
         root.sources?.forEach { src ->
             val link = src.url ?: return@forEach
-            val qualityInt = parseQuality(src.quality)
+            val qualityInt = QualityUtils.parseQuality(src.quality)
             callback(
                 ExtractorLink(
                     source = "Klikxxi",
@@ -160,18 +156,6 @@ object VidnestExtractor {
                     type = ExtractorLinkType.M3U8
                 )
             )
-        }
-    }
-
-    private fun parseQuality(quality: String?): Int {
-        val q = quality?.lowercase()?.trim() ?: return 1080
-        return when {
-            q.contains("2160") || q.contains("4k") -> 2160
-            q.contains("1080") -> 1080
-            q.contains("720") -> 720
-            q.contains("480") -> 480
-            q.contains("360") -> 360
-            else -> 1080
         }
     }
 

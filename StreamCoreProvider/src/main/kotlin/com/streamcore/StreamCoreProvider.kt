@@ -8,8 +8,11 @@ import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import java.net.URLEncoder
 
 class StreamCoreProvider : MainAPI() {
     override var name = "StreamCore"
@@ -23,7 +26,6 @@ class StreamCoreProvider : MainAPI() {
         const val TMDB_API = "https://api.themoviedb.org/3"
         const val API_KEY = "15d2ea6d0dc1d476efbca3eba2b9bbfb"
         const val IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
-        const val SUB_API = "https://sub.vdrk.site"
     }
 
     override val mainPage = mainPageOf(
@@ -39,11 +41,16 @@ class StreamCoreProvider : MainAPI() {
         val response = app.get("${request.data}&page=$page").parsedSafe<TmdbResultsList>()
             ?: return newHomePageResponse(request, emptyList())
 
-        return newHomePageResponse(request, response.results.mapNotNull { it.toSearchResponse() }, hasNext = true)
+        // TMDB caps pagination at 500 pages and reports how many pages actually exist for this
+        // query; stop advertising a next page once we've reached either limit or run out of results.
+        val hasNext = response.results.isNotEmpty() && page < response.totalPages && page < 500
+
+        return newHomePageResponse(request, response.results.mapNotNull { it.toSearchResponse() }, hasNext = hasNext)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val response = app.get("$TMDB_API/search/multi?api_key=$API_KEY&query=${query.replace(" ", "+")}")
+        val encodedQuery = URLEncoder.encode(query, "UTF-8")
+        val response = app.get("$TMDB_API/search/multi?api_key=$API_KEY&query=$encodedQuery")
             .parsedSafe<TmdbResultsList>() ?: return emptyList()
 
         return response.results.mapNotNull { it.toSearchResponse() }
@@ -95,9 +102,19 @@ class StreamCoreProvider : MainAPI() {
         val show = app.get("$TMDB_API/tv/$tmdbId?api_key=$API_KEY").parsedSafe<TmdbTvDetails>() ?: return null
         val seasonCount = show.numberOfSeasons ?: 1
 
-        val episodes = (1..seasonCount).mapNotNull { season ->
-            app.get("$TMDB_API/tv/$tmdbId/season/$season?api_key=$API_KEY").parsedSafe<TmdbSeasonDetails>()
-        }.flatMap { seasonDetails ->
+        // Fetch every season concurrently instead of one round-trip at a time - a 20-season
+        // show previously took 20x the latency of a single TMDB call.
+        val seasonDetailsList = coroutineScope {
+            (1..seasonCount).map { season ->
+                async {
+                    runCatching {
+                        app.get("$TMDB_API/tv/$tmdbId/season/$season?api_key=$API_KEY").parsedSafe<TmdbSeasonDetails>()
+                    }.onFailure { logFailure("TMDB season $season fetch", it) }.getOrNull()
+                }
+            }.awaitAll().filterNotNull()
+        }
+
+        val episodes = seasonDetailsList.flatMap { seasonDetails ->
             seasonDetails.episodes.map { ep ->
                 val epNumber = ep.episodeNumber ?: 1
                 val payload = MediaPayload(
@@ -131,61 +148,29 @@ class StreamCoreProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val payload = runCatching { parseJson<MediaPayload>(data) }.getOrNull() ?: return false
-        val isMovie = payload.type == "movie"
+        val request = MediaRequest(
+            tmdbId = payload.id,
+            isMovie = payload.type == "movie",
+            season = payload.season,
+            episode = payload.episode
+        )
 
+        // Fan the request out to every registered subtitle/video source concurrently. Adding or
+        // removing a source only ever means editing StreamSourceRegistry - this loop, and its
+        // error handling, never needs to change.
         coroutineScope {
-            // 1. Fetch Multilingual Subtitles (CinePro / VidRock endpoint)
-            launch {
-                runCatching {
-                    val subUrl = if (isMovie) {
-                        "$SUB_API/v2/movie/${payload.id}"
-                    } else {
-                        "$SUB_API/v2/tv/${payload.id}/${payload.season ?: 1}/${payload.episode ?: 1}"
-                    }
-                    val subs = app.get(
-                        subUrl,
-                        headers = mapOf("Referer" to "https://vidrock.net/"),
-                        timeout = 6L
-                    ).parsedSafe<List<SubtitleItem>>() ?: emptyList()
-
-                    subs.forEach { item ->
-                        val file = item.file
-                        val label = item.label
-                        if (!file.isNullOrBlank() && !label.isNullOrBlank()) {
-                            subtitleCallback(
-                                SubtitleFile(
-                                    lang = label,
-                                    url = file
-                                )
-                            )
-                        }
-                    }
+            StreamSourceRegistry.subtitleSources.forEach { source ->
+                launch {
+                    runCatching { source.fetchSubtitles(request) }
+                        .onSuccess { subs -> subs.forEach(subtitleCallback) }
+                        .onFailure { logFailure("Subtitle source [${source.name}]", it) }
                 }
             }
 
-            // 2. Primary direct 1080p stream (VidCore CDN)
-            launch {
-                runCatching {
-                    VidCoreExtractor.resolveStreams(
-                        tmdbId = payload.id,
-                        isMovie = isMovie,
-                        season = payload.season,
-                        episode = payload.episode,
-                        callback = callback
-                    )
-                }
-            }
-
-            // 3. Multi-server failover streams (AllMovies, HollyMovieHD, Klikxxi)
-            launch {
-                runCatching {
-                    VidnestExtractor.resolveStreams(
-                        tmdbId = payload.id,
-                        isMovie = isMovie,
-                        season = payload.season,
-                        episode = payload.episode,
-                        callback = callback
-                    )
+            StreamSourceRegistry.extractors.forEach { extractor ->
+                launch {
+                    runCatching { extractor.resolveStreams(request, callback) }
+                        .onFailure { logFailure("Extractor [${extractor.name}]", it) }
                 }
             }
         }
@@ -200,13 +185,9 @@ class StreamCoreProvider : MainAPI() {
         val episode: Int? = null
     )
 
-    data class SubtitleItem(
-        @JsonProperty("label") val label: String?,
-        @JsonProperty("file") val file: String?
-    )
-
     data class TmdbResultsList(
-        @JsonProperty("results") val results: List<TmdbItem> = emptyList()
+        @JsonProperty("results") val results: List<TmdbItem> = emptyList(),
+        @JsonProperty("total_pages") val totalPages: Int = 1
     )
 
     data class TmdbItem(
