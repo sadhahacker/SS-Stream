@@ -7,7 +7,7 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-        // Jitpack repo which contains our tools and dependencies
+        // Shitpack repo which contains our tools and dependencies
         maven("https://jitpack.io")
     }
 
@@ -15,7 +15,7 @@ buildscript {
         classpath("com.android.tools.build:gradle:8.7.3")
         // Cloudstream gradle plugin which makes everything work and builds plugins
         classpath("com.github.recloudstream:gradle:-SNAPSHOT")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.0")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0")
     }
 }
 
@@ -71,18 +71,14 @@ subprojects {
         val cloudstream by configurations
         val implementation by configurations
 
-        // Stubs for all Cloudstream classes (Plugin, MainAPI, etc.), compiled against the
-        // real app at runtime. This addon uses android.content.Context/AlertDialog for its
-        // in-app settings dialog, which requires the Android-specific `Plugin` class -
-        // that class only ships in these app stubs, not in the cross-platform `library`
-        // artifact (which only exposes the context-free `BasePlugin`).
+        // Stubs for all cloudstream classes
         cloudstream("com.lagradost:cloudstream3:pre-release")
 
         // These dependencies can include any of those which are added by the app,
         // but you don't need to include any of them if you don't need them.
         // https://github.com/recloudstream/cloudstream/blob/master/app/build.gradle.kts
         implementation(kotlin("stdlib")) // Adds Standard Kotlin Features
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0") // Parallel source resolution
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
         implementation("com.github.Blatzar:NiceHttp:0.4.11") // HTTP Lib
         implementation("org.jsoup:jsoup:1.18.3") // HTML Parser

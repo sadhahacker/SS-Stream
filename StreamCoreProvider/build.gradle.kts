@@ -1,11 +1,9 @@
 // Use an integer for version numbers
-version = 4
+version = 1
 
 cloudstream {
-    // All of these properties are optional, you can safely remove any of them.
-
-    description = "Universal multi-server streaming engine combining VidCore, VidLink, Videasy and more, with in-app priority switching and automatic failover"
-    authors = listOf("StreamCore")
+    description = "TMDB Media Provider"
+    authors = listOf("sadhasivam")
 
     /**
      * Status int as one of the following:
@@ -13,11 +11,13 @@ cloudstream {
      * 1: Ok
      * 2: Slow
      * 3: Beta-only
-     */
-    status = 1 // Will be 3 if unspecified
+     **/
+    status = 1
 
     tvTypes = listOf("Movie", "TvSeries")
-    iconUrl = "https://www.google.com/s2/favicons?domain=vidcore.org&sz=%size%"
 
-    // Not cross-platform: uses android.content.Context / AlertDialog for the in-app settings UI.
+    requiresResources = false
+    language = "en"
+
+    iconUrl = "https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ded904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.png"
 }

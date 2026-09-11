@@ -8,20 +8,12 @@ import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.loadExtractor
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
-/**
- * TMDB-backed catalog that fans a single title out across every source registered
- * in [REGISTERED_SOURCES] (see StreamSources.kt), in parallel, with runtime priority
- * and enable/disable controlled from the in-app Settings dialog.
- */
 class StreamCoreProvider : MainAPI() {
     override var name = "StreamCore"
-    override var mainUrl = "https://vidcore.org"
+    override var mainUrl = "https://www.themoviedb.org"
     override var lang = "en"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
     override val hasMainPage = true
@@ -31,13 +23,16 @@ class StreamCoreProvider : MainAPI() {
         const val TMDB_API = "https://api.themoviedb.org/3"
         const val API_KEY = "15d2ea6d0dc1d476efbca3eba2b9bbfb"
         const val IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
+        const val SUB_API = "https://sub.vdrk.site"
     }
 
     override val mainPage = mainPageOf(
         "$TMDB_API/trending/movie/day?api_key=$API_KEY" to "Trending Movies",
         "$TMDB_API/trending/tv/day?api_key=$API_KEY" to "Trending TV Shows",
         "$TMDB_API/movie/popular?api_key=$API_KEY" to "Popular Movies",
-        "$TMDB_API/tv/popular?api_key=$API_KEY" to "Popular TV Shows"
+        "$TMDB_API/tv/popular?api_key=$API_KEY" to "Popular TV Shows",
+        "$TMDB_API/movie/top_rated?api_key=$API_KEY" to "Top Rated Movies",
+        "$TMDB_API/tv/top_rated?api_key=$API_KEY" to "Top Rated TV Shows"
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
@@ -105,7 +100,12 @@ class StreamCoreProvider : MainAPI() {
         }.flatMap { seasonDetails ->
             seasonDetails.episodes.map { ep ->
                 val epNumber = ep.episodeNumber ?: 1
-                val payload = MediaPayload(id = tmdbId, type = "tv", season = seasonDetails.seasonNumber, episode = epNumber)
+                val payload = MediaPayload(
+                    id = tmdbId,
+                    type = "tv",
+                    season = seasonDetails.seasonNumber,
+                    episode = epNumber
+                )
                 newEpisode(payload.toJson()) {
                     name = ep.name
                     season = seasonDetails.seasonNumber
@@ -130,21 +130,27 @@ class StreamCoreProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val payload = parseJson<MediaPayload>(data)
-        val sources = StreamSettingsManager.getRuntimeSortedSources()
+        val payload = runCatching { parseJson<MediaPayload>(data) }.getOrNull() ?: return false
+        val isMovie = payload.type == "movie"
 
         coroutineScope {
+            // 1. Fetch Multilingual Subtitles (CinePro / VidRock endpoint)
             launch {
                 runCatching {
-                    val subUrl = if (payload.type == "tv") {
-                        "https://api.shows.st/subtitles/tv/${payload.id}/${payload.season ?: 1}/${payload.episode ?: 1}"
+                    val subUrl = if (isMovie) {
+                        "$SUB_API/v2/movie/${payload.id}"
                     } else {
-                        "https://api.shows.st/subtitles/movie/${payload.id}"
+                        "$SUB_API/v2/tv/${payload.id}/${payload.season ?: 1}/${payload.episode ?: 1}"
                     }
-                    val subs = app.get(subUrl, timeout = 6L).parsedSafe<List<SubtitleItem>>() ?: emptyList()
-                    subs.forEach { sub ->
-                        val file = sub.file
-                        val label = sub.label
+                    val subs = app.get(
+                        subUrl,
+                        headers = mapOf("Referer" to "https://vidrock.net/"),
+                        timeout = 6L
+                    ).parsedSafe<List<SubtitleItem>>() ?: emptyList()
+
+                    subs.forEach { item ->
+                        val file = item.file
+                        val label = item.label
                         if (!file.isNullOrBlank() && !label.isNullOrBlank()) {
                             subtitleCallback(
                                 SubtitleFile(
@@ -157,20 +163,31 @@ class StreamCoreProvider : MainAPI() {
                 }
             }
 
-            sources.map { source ->
-                async {
-                    runCatching {
-                        source.loadStreams(
-                            tmdbId = payload.id,
-                            type = payload.type,
-                            season = payload.season,
-                            episode = payload.episode,
-                            subtitleCallback = subtitleCallback,
-                            callback = callback
-                        )
-                    }
+            // 2. Primary direct 1080p stream (VidCore CDN)
+            launch {
+                runCatching {
+                    VidCoreExtractor.resolveStreams(
+                        tmdbId = payload.id,
+                        isMovie = isMovie,
+                        season = payload.season,
+                        episode = payload.episode,
+                        callback = callback
+                    )
                 }
-            }.awaitAll()
+            }
+
+            // 3. Multi-server failover streams (AllMovies, HollyMovieHD, Klikxxi)
+            launch {
+                runCatching {
+                    VidnestExtractor.resolveStreams(
+                        tmdbId = payload.id,
+                        isMovie = isMovie,
+                        season = payload.season,
+                        episode = payload.episode,
+                        callback = callback
+                    )
+                }
+            }
         }
 
         return true
@@ -181,6 +198,11 @@ class StreamCoreProvider : MainAPI() {
         val type: String,
         val season: Int? = null,
         val episode: Int? = null
+    )
+
+    data class SubtitleItem(
+        @JsonProperty("label") val label: String?,
+        @JsonProperty("file") val file: String?
     )
 
     data class TmdbResultsList(
