@@ -48,8 +48,28 @@ jobs:
           cd $GITHUB_WORKSPACE/src
           chmod +x gradlew
           ./gradlew make makePluginsJson
+          python3 -c '
+          import json
+          from pathlib import Path
+          p = Path("build/plugins.json")
+          if p.exists():
+              data = json.loads(p.read_text())
+              for item in data:
+                  name = item.get("internalName", "StreamCoreProvider")
+                  pkg = f"com.streamcore.{name}"
+                  item["packageName"] = pkg
+                  item["id"] = pkg
+                  if "languages" not in item:
+                      item["languages"] = [item.get("language", "en")]
+                  if "categories" not in item:
+                      item["categories"] = item.get("tvTypes", ["Movie", "TvSeries"])
+                  if "baseUrl" not in item:
+                      item["baseUrl"] = "https://api.themoviedb.org"
+              p.write_text(json.dumps(data, indent=4))
+          '
           cp **/build/*.cs3 $GITHUB_WORKSPACE/builds
           cp build/plugins.json $GITHUB_WORKSPACE/builds
+          cp repo.json $GITHUB_WORKSPACE/builds/repo.json || true
 
       - name: Push builds
         run: |
@@ -61,3 +81,5 @@ jobs:
           git push --force origin builds
           curl -sL https://purge.jsdelivr.net/gh/sadhahacker/SS-Stream@builds/StreamCoreProvider.cs3 || true
           curl -sL https://purge.jsdelivr.net/gh/sadhahacker/SS-Stream@builds/plugins.json || true
+          curl -sL https://purge.jsdelivr.net/gh/sadhahacker/SS-Stream@builds/repo.json || true
+
