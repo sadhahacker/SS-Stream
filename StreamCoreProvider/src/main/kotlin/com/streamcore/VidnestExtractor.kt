@@ -149,16 +149,29 @@ object VidnestExtractor {
         val root = runCatching { parseJson<KlikxxiPayload>(json) }.getOrNull() ?: return
         root.sources?.forEach { src ->
             val link = src.url ?: return@forEach
+            val qualityInt = parseQuality(src.quality)
             callback(
                 ExtractorLink(
                     source = "Klikxxi",
                     name = "[Klikxxi] ${src.quality ?: "Auto"}",
                     url = link,
                     referer = "https://klikxxi.me/",
-                    quality = 1080,
+                    quality = qualityInt,
                     type = ExtractorLinkType.M3U8
                 )
             )
+        }
+    }
+
+    private fun parseQuality(quality: String?): Int {
+        val q = quality?.lowercase()?.trim() ?: return 1080
+        return when {
+            q.contains("2160") || q.contains("4k") -> 2160
+            q.contains("1080") -> 1080
+            q.contains("720") -> 720
+            q.contains("480") -> 480
+            q.contains("360") -> 360
+            else -> 1080
         }
     }
 

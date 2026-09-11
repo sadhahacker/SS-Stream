@@ -33,10 +33,16 @@ object VidCoreExtractor {
             )
             val referer = headers["Referer"] ?: "https://embed.vidrift.in/"
 
+            val qualityLabel = when {
+                qualityInt >= 2160 -> "4K"
+                qualityInt > 0 -> "${qualityInt}p"
+                else -> src.quality ?: "Auto"
+            }
+
             callback(
                 ExtractorLink(
                     source = "VidCore",
-                    name = "[VidCore] 1080p",
+                    name = "[VidCore] $qualityLabel",
                     url = streamUrl,
                     referer = referer,
                     quality = qualityInt,
