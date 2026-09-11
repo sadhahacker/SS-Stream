@@ -59,3 +59,5 @@ jobs:
           git add .
           git commit --amend -m "Build $GITHUB_SHA" || git commit -m "Build $GITHUB_SHA" || exit 0
           git push --force origin builds
+          curl -sL https://purge.jsdelivr.net/gh/sadhahacker/SS-Stream@builds/StreamCoreProvider.cs3 || true
+          curl -sL https://purge.jsdelivr.net/gh/sadhahacker/SS-Stream@builds/plugins.json || true
